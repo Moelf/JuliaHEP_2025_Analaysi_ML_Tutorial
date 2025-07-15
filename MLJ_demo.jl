@@ -296,6 +296,9 @@ md"Already, we can inspect the most important features here:"
 # ╔═╡ 12ceafb8-229d-45d9-a41d-baea0b94b595
 feature_importances(xgb_mach)[1:5]
 
+# ╔═╡ 17454925-0399-46ea-92ea-1b6c1c04b8aa
+Hist1D(X.DER_mass_MMC)
+
 # ╔═╡ e140f8f9-0c18-48a8-ad7c-e34f3a8ffa3c
 md"""
 ## Model performance evaluation
@@ -381,7 +384,7 @@ UnROOT = "~0.10.37"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.6"
+julia_version = "1.11.5"
 manifest_format = "2.0"
 project_hash = "f647d55610b4c278c3aeb7fcc0d45feaab44155b"
 
@@ -3003,6 +3006,7 @@ version = "3.6.0+0"
 # ╠═b083dabf-e796-4a69-a019-daef660a5a06
 # ╠═3c0a71fc-e52f-4753-9ef5-478365c7a954
 # ╠═12ceafb8-229d-45d9-a41d-baea0b94b595
+# ╠═17454925-0399-46ea-92ea-1b6c1c04b8aa
 # ╠═e140f8f9-0c18-48a8-ad7c-e34f3a8ffa3c
 # ╠═9007ea47-582e-41e8-bbf1-8d653f45918a
 # ╠═a1af5d11-0cd4-43db-a216-fa85880aae0e
