@@ -88,7 +88,7 @@ the Jacobian is
 \frac{\partial h}{\partial x} = \frac{\partial f_l}{\partial f_{l-1}}
 \frac{\partial f_{l-1}}{\partial f_{l-2}} \cdots \frac{\partial f_{1}}{\partial x}
 ```
-can be computed in (at least) two different ways:
+which can be computed in (at least) two different ways:
 - We can start from ``f_1`` and work our way up to ``f_l``, this is called **forward mode**.
 - We can start from ``f_l`` and work our way down to ``f_1``, this is called **reverse mode**.
 
@@ -97,7 +97,7 @@ Each is more efficint in different cases
 - **Reverse:** beest for ``n \gg m`` (because we have to do a separate reverse pass for each output!)
 
 !!! info "Reverse Mode is a Huge Pain in the Ass"
-	Implementing reverse mode is a gigantic headache for a few reasons.  First, your code normally executes in the forward direction.  Second, you have to compute the argument for each Jacobian factor which involves doing a forward pass first.  This is why reverse mode implementations tend to be _waaaaaaaay_ simpler.  As a rule of thumb, you should use forward mode whenever you are able, but unfortunately reverse mode is needed in arguably more cases, e.g. deep learning.
+	Implementing reverse mode is a gigantic headache for a few reasons.  First, your code normally executes in the forward direction.  Second, you have to compute the argument for each Jacobian factor which involves doing a forward pass first.  This is why reverse mode implementations tend to be _waaaaaaaay_ simpler.  As a rule of thumb, you should use forward mode whenever you are able, but unfortunately reverse mode is needed in many important cases, notably deep learning.
 """
 
 # ╔═╡ 77f2dfe0-d781-4d7c-9c8d-4cabab72249c
@@ -198,6 +198,11 @@ begin
 	(o, _) = mlp(x, θ, ψ)  # we have to provide the parameters on every call to the network; new state is included in the return value
 end
 
+# ╔═╡ dcf7e7d1-7872-48cd-a3ce-b060e85c986b
+md"""
+The model *function* is created with the `Chain`.  The parameters are created using `Lux.setup`.
+"""
+
 # ╔═╡ 74ddefb0-cc63-49b2-9f4c-3374e2c9c112
 begin  # training
 	# construct the training state
@@ -213,6 +218,13 @@ begin  # training
 		)
 	end
 end
+
+# ╔═╡ 22944d40-a715-49f2-a5e8-594de6ab96b7
+md"""
+The Lux training state contains the model parameters and the optimization state (in this case created with `Adam`).
+
+All of this is updated in-place by `single_train_step!`.
+"""
 
 # ╔═╡ 11d75cb0-776d-4124-990c-ba2550239614
 md"""
@@ -234,6 +246,11 @@ struct Jet
 	C2::Float64  # energy correlation jet substructure coeff
 end
 
+# ╔═╡ 5d2b3958-3728-40c4-95a4-c31fef6cb7f6
+md"""
+We will use MLUtils.jl to prepare the data.  We define a collection of jets with methods appropriate for getting batches during training.
+"""
+
 # ╔═╡ 33c5369f-893b-47fe-958b-0d68be160219
 begin
 	modu = nameof(@__MODULE__)
@@ -246,8 +263,10 @@ begin  # make a data iterator with MLUtils.jl
 		jets::Vector{Jet}
 	end
 
+	# needed to work with MLUtils
 	MLUtils.numobs(jds::JetDataset) = length(jds.jets)
 
+	# features for getobs
 	function getjetclass(jds::JetDataset, idxs)
     	o = Matrix{Float32}(undef, 2, length(idxs))
     	for (k, idx) ∈ enumerate(idxs)
@@ -257,6 +276,7 @@ begin  # make a data iterator with MLUtils.jl
     	o
 	end
 
+	# target for getobs
 	function getjetproperties(jds::JetDataset, idxs)
     	o = Matrix{Float32}(undef, 7, length(idxs))
     	for (k, idx) ∈ enumerate(idxs)
@@ -272,6 +292,7 @@ begin  # make a data iterator with MLUtils.jl
     	o
 	end
 
+	# MLUtils will use this to create batches
 	MLUtils.getobs(jds::JetDataset, idxs) = (
 		getjetproperties(jds, idxs), getjetclass(jds, idxs),
 	)
@@ -313,6 +334,7 @@ function train(rng::AbstractRNG, traindat;
 
     ℓ = 0.0
     for j ∈ 1:nepochs
+		# MLUtils uses getobs for this batch iteration
         for batch ∈ data
             (_, ℓ, stats, s) = Training.single_train_step!(diffbackend,
                 CrossEntropyLoss(), batch, s,
@@ -330,9 +352,14 @@ function train(rng::AbstractRNG, traindat;
     StatefulLuxLayer{false}(mlp, θo, ψo)
 end
 
+# ╔═╡ a6f151b7-4347-462f-904b-63b3580b638c
+md"""
+The following will load from data that I saved from Pythia
+"""
+
 # ╔═╡ 27c66051-bb88-4977-80e3-660582f233ba
 # this will load our data
-loadjets(loc=joinpath(@__DIR__, "data", "Z_or_qcd_jet_sample.jlser")) = deserialize(loc)
+loadjets(loc=joinpath(@__DIR__,"Z_or_qcd_jet_sample.jlser")) = deserialize(loc)
 
 # ╔═╡ 06f62aeb-3b74-4ee9-995c-dc7c512224e9
 # compute classifier statistics
@@ -389,6 +416,8 @@ end
 # ╔═╡ fdfd2793-ae2f-44cd-b7fb-ade3bd07d040
 md"""
 To assess our classifier we compute the ["Receiver Operating Characteristic" (ROC)](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) which is independent of the threshold.
+
+MLJ has some of this stuff but unfortunately it's not in the standalone stats packages, so we'll do it from scratch.
 """
 
 # ╔═╡ 917949d6-43f5-4bb2-b060-26b8e2676107
@@ -464,7 +493,7 @@ Zygote = "~0.7.10"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.5"
+julia_version = "1.11.6"
 manifest_format = "2.0"
 project_hash = "2ca62e7cbea2f605d5e096e5a7ef9717d28fce33"
 
@@ -2996,13 +3025,17 @@ version = "3.6.0+0"
 # ╟─3ec65f97-0792-4f3d-9d7f-0b543c3c34d0
 # ╟─cddcf119-c7aa-403f-98ba-f3b1ffb0d9d3
 # ╠═be5bb297-c207-4a43-8ba0-a3d8d3e0a10a
+# ╟─dcf7e7d1-7872-48cd-a3ce-b060e85c986b
 # ╠═74ddefb0-cc63-49b2-9f4c-3374e2c9c112
+# ╟─22944d40-a715-49f2-a5e8-594de6ab96b7
 # ╟─11d75cb0-776d-4124-990c-ba2550239614
 # ╠═d9b66790-0dde-425f-b100-11d0f358cd0a
+# ╟─5d2b3958-3728-40c4-95a4-c31fef6cb7f6
 # ╟─33c5369f-893b-47fe-958b-0d68be160219
 # ╠═33d0d1df-eb88-424d-9940-c42c999082a5
 # ╟─85c48ca5-7fc9-42a8-b7dd-36b51732f5e3
 # ╠═931f7c56-8458-4d15-b194-b4b3783a9d65
+# ╟─a6f151b7-4347-462f-904b-63b3580b638c
 # ╠═27c66051-bb88-4977-80e3-660582f233ba
 # ╠═06f62aeb-3b74-4ee9-995c-dc7c512224e9
 # ╠═dd2b031f-9817-44c2-b45a-333dfa3e0d81
