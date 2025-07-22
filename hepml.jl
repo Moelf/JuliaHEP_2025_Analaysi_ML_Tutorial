@@ -176,6 +176,9 @@ Julia has a number of deep learning frameworks and if you really want you could 
 
 I recommend [Lux.jl](https://github.com/LuxDL/Lux.jl).  It is very easy to understand and with Enzyme and Reactant its performance is competitive with torch.
 
+!!! info "ML frameworks in Julia"
+	In contrast to the earlier part of the talk, we are not using MLJ here as there is currently no MLJ wrapper for Lux.  Note however that in Julia there is *much less* need for a unifying "framework" than in Python as Julia's design strongly favors generics.  There's almost nothing you can't do with generic functions from `Base` and general packages such as StatsBase.jl. Here we will use MLUtils for a few common tasks, which is very lightweight and generic.
+
 ## Building Models with Lux
 Lux is somewhat unusual in that it is very explicit in separating neural network _parameters_ from _functions_.  This can be a big advantage when hacking on models, but it requires some explanation.
 """
@@ -3000,7 +3003,7 @@ version = "4.1.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═9472fae2-35a2-46d2-b79b-4df39d2cd007
+# ╟─9472fae2-35a2-46d2-b79b-4df39d2cd007
 # ╟─34f83f5a-58f8-11f0-158d-07e41d028e63
 # ╠═5e73de74-a9a5-4dc3-9598-4b859c5a370b
 # ╟─ff46a1a6-ec9e-4156-88ff-41ee4dae0cab
