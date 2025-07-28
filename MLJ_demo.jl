@@ -7,6 +7,9 @@ using InteractiveUtils
 # ╔═╡ ab23418a-6052-11f0-2809-2b0187c9a330
 using UnROOT: ROOTFile, LazyTree
 
+# ╔═╡ c0d7ff94-075d-42b3-93c4-7d118f0cf540
+using Tables
+
 # ╔═╡ 19792208-38ad-45b4-b30c-8ebde760dd98
 using LorentzVectorHEP
 
@@ -28,17 +31,32 @@ using MLJFlux
 # ╔═╡ 671bf2b2-21ab-4a31-9ae2-34f8224a02dc
 md"""
 # Julia for HEP Data Analysis and Machine Learning
+
+### What is this tutorial about?
+This tutorial gives a mix of "practitioner" and "behind the scene" point of view into machine learning applications in HEP.
+
+### How to run this tutorial?
+- [https://github.com/Moelf/JuliaHEP\_2025\_Analysis\_ML\_Tutorial](https://github.com/Moelf/JuliaHEP_2025_Analysis_ML_Tutorial)
+
+### What you will be covered:
+- Basic analysis (how to handle .root files)
+- Push-button ML (MLJ.jl) for analysis
+- Automatic Differentiation and crafting Deep Learning models
+
+
+!!! tip
+	Ask us about anything at any time!
 """
 
 # ╔═╡ aeedb824-3f90-4394-b17b-ec6cee7b2021
 md"""
-## Outlines
+## Detailed Outlines
 
 ### Part 1 (@Moelf / Jerry)
 
-- Use Julia for "cut and count" analysis, from a `.root` file
+- Use Julia for "cut and count" analysis, from a sample `.root` file
 - Treating data as Lorentz Vectors and manipulate them in event-loop
-- Visuzliation
+- Visuzliation of histograms
 
 ### Part 2 (@Moelf / Jerry)
 
@@ -52,11 +70,11 @@ md"""
 """
 
 # ╔═╡ fed769e0-8075-4e4c-8d4e-d940158d7cb5
-md"# Part 1: .root file and traditional analysis"
+md"# Part 1: .root file and shape of an analysis"
 
 # ╔═╡ 0602817a-022a-47d9-9020-cd034a2429be
 md"""
-## Analysis starts with accessing `.root` files
+## 1.1 Analysis starts with accessing `.root` files
 
 You can use UnROOT.jl to access the most essential data from `.root` files:
 
@@ -74,7 +92,7 @@ Some feature highlights:
 
 # ╔═╡ 8574eaca-4159-429a-a20d-85e2289b137a
 md"""
-## Inspect `.root` file and open a TTree/RNTuple
+## 1.2 Inspect `.root` file and open a TTree/RNTuple
 """
 
 # ╔═╡ 09a47b4e-55b6-489d-ac23-a7b9812d84ee
@@ -83,6 +101,14 @@ rf = ROOTFile("./data/SMHiggsToZZTo4L.root")
 # ╔═╡ 26adcb4d-0b19-47c2-a7ff-3f652abd9729
 mytree = LazyTree("./data/SMHiggsToZZTo4L.root", "Events")
 
+# ╔═╡ a52b6210-c38d-41c0-a92f-7e560ad9c9a9
+md"""
+## 1.3 Inspect the schema of any "Table"
+"""
+
+# ╔═╡ 9f98c66f-b47b-46c5-9cdd-141732072e77
+Tables.schema(mytree)
+
 # ╔═╡ cd877077-df30-4e87-9b3d-cd60ebf59473
 first(mytree.Muon_charge, 4)
 
@@ -90,7 +116,7 @@ first(mytree.Muon_charge, 4)
 one_event = first(mytree);
 
 # ╔═╡ f3028ff9-db42-4f1e-a290-9103d4170714
-md"## Reconstruct data into Lorentz Vectors"
+md"## 1.4 Reconstruct data into Lorentz Vectors"
 
 # ╔═╡ 8812a17e-43b1-4736-b6cb-da69dda7a385
 (; Muon_pt, Muon_eta, Muon_phi, Muon_mass) = one_event
@@ -100,7 +126,9 @@ muons = LorentzVectorCyl.(Muon_pt, Muon_eta, Muon_phi, Muon_mass)
 
 # ╔═╡ b226d21b-1cd9-4878-b503-ed04b96ff150
 md"""
-## Reconstruct H->ZZ->4 mu
+## 1.5 Analysis Algorithm
+
+### Reconstruct H->ZZ->4 mu
 
 Ignore electrons for a moment:
 1. Require exactly 2 positive and 2 negative muons
@@ -110,7 +138,7 @@ Ignore electrons for a moment:
 
 # ╔═╡ b8e9a45e-6e35-45f5-9f61-9d0962a83f55
 md"""
-### Part 1, early continue if doesn't pass selection
+### Algorithm part 1, early continue if doesn't pass selection
 
 ```julia
 (; Muon_charge) = evt
@@ -125,7 +153,7 @@ sum(Muon_charge) != 0 && continue # shortcut if-else
 
 # ╔═╡ 1dd74976-32da-4d13-a47d-3b5afbaac4d1
 md"""
-### Part 2, reconstruct the higgs
+### Algorithm part 2, reconstruct the higgs
 `fast_mass()` also available
 
 ```julia
@@ -139,15 +167,20 @@ higgs_mass = mass(higgs_4vector)
 
 # ╔═╡ 0bc1e86f-1f54-4306-b98d-88547977b8cc
 md"""
-### Part 3, fill histogram
+### Algorithm part 3, fill histogram
 ```julia
 higgs_mass = mass(higgs_4vector)
 ```
 """
 
+# ╔═╡ 00262728-c736-48fd-971d-5159be4d0dc2
+md"""
+### Algorithm put together
+"""
+
 # ╔═╡ 5d1cb0c0-4e0d-485e-b154-83daa731961e
 function main_looper(events)
-    hist = Hist1D(;binedges=90:140)
+    hist = Hist1D(; binedges=90:140)
     for evt in events
         ### Part 1
         (; Muon_charge) = evt
@@ -172,25 +205,72 @@ end
 # ╔═╡ 0f3777f7-620e-43db-a077-b65c514a5211
 h1 = @time main_looper(mytree)
 
+# ╔═╡ 1372ee19-8353-40e7-a91c-d5efd4cffb90
+md"""
+## 1.6 Histogram Visualization
+
+### Makie integration
+FHist.jl is well integrated with Makie.jl ecosystem, see documentation for [all the examples](https://moelf.github.io/FHist.jl/stable/notebooks/makie_plotting/).
+"""
+
+# ╔═╡ 150547ff-2f68-4776-8ceb-e3bbc4b3b92a
+barplot(h1; color=:crimson)
+
 # ╔═╡ 1c11f321-74e2-4520-9236-890d22b0620e
-stairs(h1;
-	axis = (xlabel="4-muon inv. mass (GeV)",
-		xticks = 0:5:140,
-		ylabel="Entries (unweighted)",
-		limits=(nothing, nothing, 0, nothing)
-	)
-)
+begin
+	fig = Figure()
+	ax1 = Axis(fig[1, 1]; 
+			   xlabel="4-muon inv. mass (GeV)",
+				xticks = 0:5:140,
+				ylabel="Entries (unweighted)",
+				limits=(nothing, nothing, 0, nothing)
+			  )
+	
+	stairs!(ax1, h1; label="Data")
+	errorbars!(h1)
+	FHist.statbox!(fig, h1)
+	axislegend()
+	
+	fig
+end
 
 # ╔═╡ 1bb3131d-f6f7-42c7-9380-53ef017f3048
 md"""
 # Part 2: ML R&D with MLJ.jl
 
-About dataset: [https://opendata.cern.ch/record/328](https://opendata.cern.ch/record/328):
+### Goal
+Given labeled events data, we want to train a Classifier that can identify events that are more likely to contain Higgs Boson.
 
-In particular, it has schema for the columns
-> KaggleSet: specifying to which Kaggle set the event belongs : ”t”:training, ”b”:public leaderboard, ”v”:private leaderboard,”u”:unused.
+!!! note "Different MLs"
+	In this tutorial, we focus on supervised classifiers, meaning that we have some training data that have truth labels attached, and we're interested in training a model for classifying data without truth labels later.
 
-> PRI\_tau\_eta: 	The pseudorapidity η of the hadronic tau.
+### Introduction and Dataset
+
+We use the dataset from Kaggle Higgs Boson ML competition: [https://opendata.cern.ch/record/328](https://opendata.cern.ch/record/328)
+
+It contains some physical variable columns:
+
+- > PRI\_tau\_eta: 	The pseudorapidity η of the hadronic tau.
+
+And some metadata columns
+
+- > KaggleSet: specifying to which Kaggle set the event belongs : ”t”:training, ”b”:public leaderboard, ”v”:private leaderboard,”u”:unused.
+
+
+"""
+
+# ╔═╡ af3d7e97-fc8a-4840-8105-024fdab13302
+md"""
+## 2.1 Loading the Data
+
+In this case, the data comes in as flat table in CSV file. In the most common cases, data would be in flat table, but in more efficient format (root files, Arrow, Parquet, HDF5 etc.).
+
+In more advanced cases, the table may not be flat, this is getting more common in ML community in general, see [hierarchical data](https://stats.stackexchange.com/questions/221358/how-to-deal-with-hierarchical-nested-data-in-machine-learning).
+
+!!! warning "Training on Dataset > RAM"
+	If data is too large, it's common to load data in "batches" from disk, so at any moment the RAM or VRAM usage is under control.
+
+	Keyword to search: `DataLoader`
 """
 
 # ╔═╡ daef072c-9083-473a-884a-168883e66bb7
@@ -200,13 +280,22 @@ df_all = DataFrame(CSV.File(joinpath(@__DIR__, "data", "atlas-higgs-challenge-20
 names(df_all)
 
 # ╔═╡ 861723a1-2e7d-41be-87ec-d60fed7ded1d
-md"## Split dataset"
+md"## 2.2 Partitioning the dataset
+
+Using the metadata, we isolate the training set for the following part.
+"
 
 # ╔═╡ 6aabbf36-5456-42c4-9579-4bfd4c687951
 df_train = df_all[df_all.KaggleSet .== "t", :]
 
 # ╔═╡ ca22d0c1-fcca-4273-b805-4f95f386a82b
-md"## Unpacking into labels (y) and features (X)"
+md"## 2.3 Unpacking Table into label (y) and features (X)
+
+Since we're training a supervised classifier, our label (y) is going to be categorical.
+
+Also, we want to exclude weights and metadata from feature (X) since they're not physical variable.
+
+"
 
 # ╔═╡ bf041e37-1aee-4196-a9e4-2fab6b9e8053
 begin
@@ -217,10 +306,13 @@ begin
 	y = coerce(y, OrderedFactor)
 end
 
+# ╔═╡ e1d39dac-bffd-4405-9371-f490add2434e
+size(X)
+
 # ╔═╡ eb6515cd-70cd-4ca7-a7b4-72c008f5d6b2
 md"""
 
-## Finding a matching model
+## 2.4 Finding a model for our task
 
 Given the feature and output type, MLJ can find us compatible models.
 
@@ -235,11 +327,6 @@ models(matching(X,y))
 # ╔═╡ fab77cfb-bf06-411a-8ebe-fefba7c38843
 X.PRI_jet_num = float.(X.PRI_jet_num);
 
-# ╔═╡ cf4b1747-c468-47b2-8e8e-e9a9435cc67e
-md"""
-## Many models to choose from
-"""
-
 # ╔═╡ b85766cd-55e8-4819-acdb-c6634d8df2b3
 models(matching(X,y))
 
@@ -251,11 +338,22 @@ models(x -> x.is_pure_julia, matching(X,y))
 
 # ╔═╡ a38a9ae3-4f66-4cba-a5a5-5b25406aa794
 md"""
-## XGBoost via MLJ
+## 2.5 XGBoost via MLJ
 
 XGBoost probably is the most used machine learning model for analysis (Boosted Decision Tree in general).
 
 We can use that via MLJ!
+
+### What is XGBoost? Decision Trees + Gradient boosting
+
+#### Here's a single Decision tree
+![](https://docs.outerbounds.com/assets/images/use-tree-model-04-87794d9daf575ac3b8d5a1eac0edb2c0.png)
+
+#### At each epoch, we re-weight the mis-classified data from previous learner
+![](https://kagi.com/proxy/image?c=2oXFwqyXwZkAb7ygnvLs5joBX6Lz3T5WU-XeTsDKcDvn7yaw_sXKf672bthpf66IiPzcAkn6XAGOEZHuAb8-6b8_Gy2y1qd-DIYU37gQWhtQiX2JCuHaYImEODBWceyyPCbwPWWktvMcGGG9BXZxPLVhB9YYGIiL1qnncWY67POgefKKyR9lRFY4vIxOJQaPUSZzFHmIhmwGqv0hfno3kZEuQMSlI-33h_Z_ENoPWeoKdqT8KYGlaDRLSSSIqHYTjfKoOPjoSMKB4EZNfdTMybdw913oJTIlGNXdPxpNx1xwJ4zTW4JvE8REJGz8abXYvIHMJ4__y2OlbtBTMVa0E73H65WMiXH6ISrfOj_VU5X2C4fwEnITWpKrDbiY2evCtxAnDafglliTHNO-dzPR7Q%3D%3D)
+
+#### After each iteration, the total number of trees used for prediction increases
+![](https://affine.ai/wp-content/uploads/2021/10/145.png)
 """
 
 # ╔═╡ d6497c80-4b2e-4bd7-aa3b-96e0603eda0e
@@ -266,7 +364,7 @@ XGBoostClassifier = @load XGBoostClassifier pkg=XGBoost
 
 # ╔═╡ 5f77b848-d520-45c6-ac02-6458011b8eca
 md"""
-## Configure models
+## 2.6 Configure models
 
 MLJ follows a "model + data = machine" structure.
 
@@ -301,7 +399,7 @@ Hist1D(X.DER_mass_MMC)
 
 # ╔═╡ e140f8f9-0c18-48a8-ad7c-e34f3a8ffa3c
 md"""
-## Model performance evaluation
+## 2.7 Model performance evaluation
 
 Often, you want to evaluate the models for performance, maybe you want to compare multiple different models.
 
@@ -325,7 +423,7 @@ evaluate!(xgb_bad_mach, resampling=Holdout(fraction_train=0.8), measure=[MLJ.auc
 
 # ╔═╡ a37bd87b-b0e4-43ef-84b7-ccc68d6110cb
 md"""
-## Try a different model in MLJ
+## 2.8 Try a different model in MLJ
 
 Probably the nicest thing with using MLJ is you can rapidly switching between different machine learning models, so let's try a different model:
 """
@@ -337,7 +435,11 @@ NNClassifier = @load NeuralNetworkBinaryClassifier pkg=MLJFlux
 md"
 Consult [MLJFlux.jl documentation](https://fluxml.ai/MLJFlux.jl/dev/interface/Classification/) for more details.
 
-Here, our model has 3 hidden layers, with 8, 16, 8 neurons respectively:
+Here, our model has:
+- The input layer is 30 (because the `X` has 30 features)
+- 3 hidden layers, with 8, 16, 8 neurons respectively
+- Activitation function is `relu`
+- Finaliser is `sigma` which will give us a number [0,1] suitable for probability
 "
 
 # ╔═╡ 36dcf129-5fe7-4725-b380-f13631459001
@@ -355,6 +457,9 @@ md"We see that the performance is worse than BDT, which is expected given the su
 # ╔═╡ f1bb5448-0591-40d3-bd8b-ffcdde1d2649
 evaluate!(nn_mach, resampling=Holdout(fraction_train=0.8), measure=[MLJ.auc, MLJ.log_loss, MLJ.f1score])
 
+# ╔═╡ eae5b7c1-5980-491f-bd8a-e03625bdd9f7
+
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -366,6 +471,7 @@ LorentzVectorHEP = "f612022c-142a-473f-8cfd-a09cf3793c6c"
 MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
 MLJFlux = "094fc8d1-fd35-5302-93ea-dabda2abf845"
 MLJXGBoostInterface = "54119dfa-1dab-4055-a167-80440f4f7a91"
+Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 UnROOT = "3cd96dde-e98d-4713-81e9-a4a1b0235ce9"
 
 [compat]
@@ -377,6 +483,7 @@ LorentzVectorHEP = "~0.1.8"
 MLJ = "~0.20.7"
 MLJFlux = "~0.6.6"
 MLJXGBoostInterface = "~0.3.12"
+Tables = "~1.12.1"
 UnROOT = "~0.10.37"
 """
 
@@ -384,9 +491,9 @@ UnROOT = "~0.10.37"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.5"
+julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "f647d55610b4c278c3aeb7fcc0d45feaab44155b"
+project_hash = "6f7028e24b14670b012125da32a4ee20c096c8c6"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -2957,13 +3064,16 @@ version = "3.6.0+0"
 
 # ╔═╡ Cell order:
 # ╟─671bf2b2-21ab-4a31-9ae2-34f8224a02dc
-# ╟─aeedb824-3f90-4394-b17b-ec6cee7b2021
+# ╠═aeedb824-3f90-4394-b17b-ec6cee7b2021
 # ╠═fed769e0-8075-4e4c-8d4e-d940158d7cb5
 # ╠═0602817a-022a-47d9-9020-cd034a2429be
 # ╠═8574eaca-4159-429a-a20d-85e2289b137a
 # ╠═ab23418a-6052-11f0-2809-2b0187c9a330
 # ╠═09a47b4e-55b6-489d-ac23-a7b9812d84ee
 # ╠═26adcb4d-0b19-47c2-a7ff-3f652abd9729
+# ╠═a52b6210-c38d-41c0-a92f-7e560ad9c9a9
+# ╠═c0d7ff94-075d-42b3-93c4-7d118f0cf540
+# ╠═9f98c66f-b47b-46c5-9cdd-141732072e77
 # ╠═cd877077-df30-4e87-9b3d-cd60ebf59473
 # ╠═0f70ccf9-ed21-4fa0-a5f0-fc5addf01453
 # ╠═f3028ff9-db42-4f1e-a290-9103d4170714
@@ -2974,13 +3084,17 @@ version = "3.6.0+0"
 # ╠═b8e9a45e-6e35-45f5-9f61-9d0962a83f55
 # ╠═1dd74976-32da-4d13-a47d-3b5afbaac4d1
 # ╠═0bc1e86f-1f54-4306-b98d-88547977b8cc
+# ╠═00262728-c736-48fd-971d-5159be4d0dc2
 # ╠═77b6c40a-4512-44fc-8ea2-38dcefde2749
 # ╠═5d1cb0c0-4e0d-485e-b154-83daa731961e
 # ╠═0f3777f7-620e-43db-a077-b65c514a5211
+# ╠═1372ee19-8353-40e7-a91c-d5efd4cffb90
 # ╠═b1047996-4ccf-4a87-af8a-d3a1965e9c9f
+# ╠═150547ff-2f68-4776-8ceb-e3bbc4b3b92a
 # ╠═1c11f321-74e2-4520-9236-890d22b0620e
 # ╠═1bb3131d-f6f7-42c7-9380-53ef017f3048
 # ╠═d70cdffd-749d-4436-b5e1-00c3c36ae8cd
+# ╠═af3d7e97-fc8a-4840-8105-024fdab13302
 # ╠═daef072c-9083-473a-884a-168883e66bb7
 # ╠═b556bd3a-277b-484a-94f7-f45c2fa56250
 # ╠═861723a1-2e7d-41be-87ec-d60fed7ded1d
@@ -2988,12 +3102,12 @@ version = "3.6.0+0"
 # ╠═ca22d0c1-fcca-4273-b805-4f95f386a82b
 # ╠═81d65a96-66b2-440b-8e49-ed3f9ce3d2a8
 # ╠═bf041e37-1aee-4196-a9e4-2fab6b9e8053
+# ╠═e1d39dac-bffd-4405-9371-f490add2434e
 # ╠═eb6515cd-70cd-4ca7-a7b4-72c008f5d6b2
 # ╠═6299b967-4009-41f8-ac5d-d310c88a1868
 # ╠═fab77cfb-bf06-411a-8ebe-fefba7c38843
-# ╠═cf4b1747-c468-47b2-8e8e-e9a9435cc67e
 # ╠═b85766cd-55e8-4819-acdb-c6634d8df2b3
-# ╠═1804f113-5e3b-4b09-a22b-fa661ab1113d
+# ╟─1804f113-5e3b-4b09-a22b-fa661ab1113d
 # ╠═ce2926da-ce8d-4c62-a46c-09f50900a241
 # ╠═a38a9ae3-4f66-4cba-a5a5-5b25406aa794
 # ╠═d6497c80-4b2e-4bd7-aa3b-96e0603eda0e
@@ -3022,5 +3136,6 @@ version = "3.6.0+0"
 # ╠═f36a5206-82f8-491f-93e4-ba78b4ad08df
 # ╠═9d05f038-5e6b-4f7c-b22a-277aedd02e4b
 # ╠═f1bb5448-0591-40d3-bd8b-ffcdde1d2649
+# ╠═eae5b7c1-5980-491f-bd8a-e03625bdd9f7
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
