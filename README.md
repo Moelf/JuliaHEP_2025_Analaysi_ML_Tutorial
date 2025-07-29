@@ -27,3 +27,7 @@ where the `dot` means here.
 
 7. run `pkg> instantiate`
 8. Look up again when waiting for precompilation
+
+## Compiled Pluto notebooks:
+- [Fitting in Julia](https://pluto.land/n/m6fuf72z)
+- [MLJ Demo](https://pluto.land/n/qbhxq78c)
