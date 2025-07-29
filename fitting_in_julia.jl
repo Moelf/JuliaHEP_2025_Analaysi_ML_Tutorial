@@ -68,6 +68,9 @@ md"""
 # ╔═╡ e011b2f9-299c-4b71-b507-4a465b5cef31
 md" Let's start with a Normal distribution:"
 
+# ╔═╡ 5b390dac-e21c-4971-a54f-ed31c372f4a6
+total_N = 10^6
+
 # ╔═╡ c4f570b0-ceb3-45ac-9021-18f959ea03f4
 N_dist = Normal(30, 5)
 
@@ -78,7 +81,7 @@ plot(N_dist; axis=(; title="Makie is great", xlabel="x"))
 md"We can sample it a bunch of times:"
 
 # ╔═╡ d24dca2c-4ee2-4b4b-936f-d31657703f7d
-N_sampled = rand(N_dist, 10^6);
+N_sampled = rand(N_dist, total_N);
 
 # ╔═╡ 477b7274-54db-4893-8ae3-a838d7216c9b
 md"""
@@ -102,12 +105,13 @@ mean(N_sampled), std(N_sampled)
 md"### Part 1.4 Let's make a histogram for binned fit"
 
 # ╔═╡ 31d86a91-a255-4222-bb5c-696b6277ad03
-N_hist = Hist1D(N_sampled; binedges = 10:50);
+N_hist = Hist1D(N_sampled; binedges = 20:40);
 
 # ╔═╡ f299a7c3-4049-413a-a083-50fdcab4ebf3
-begin
-	fig =scatter(N_hist, axis=(; xlabel="x"))
-	# lines!(10..50, x -> integral(N_hist)*pdf(Normal(30, 5), x))
+let
+	fig =scatter(N_hist, axis=(; xlabel="x"), label="hist of the core")
+	lines!(10..50, x -> total_N*pdf(Normal(30, 5), x); color=:red, label="truth")
+	axislegend()
 	fig
 end
 
@@ -124,9 +128,9 @@ Let's assume we picked the PDF of the Normal distribution as our Curve, then for
 \hat{y}_i = \text{PDF}_N(x_i; \mu, \sigma)
 ```
 
-For cost function, we make a simple choice for demo purpose:
+For cost function, we need to take bin-error into account:
 ```math
-C(\mu, \sigma) = \sum_i (\hat{y}_i - y_i)^2
+C(\mu, \sigma) = \sum_i \frac{(\hat{y}_i - y_i)^2}{Var}
 ```
 """
 
@@ -185,14 +189,16 @@ function Cost(u, p)
 	
 	xs = bincenters(N_hist)
 	ys = bincounts(N_hist)
-	yhats = integral(N_hist)*pdf.(d, xs)
+	σs = binerrors(N_hist)
+	
+	yhats = total_N*pdf.(d, xs)
 
-	return sum(abs2, ys .- yhats)
+	return sum(abs2, (ys .- yhats) ./ σs)
 end
 
 # ╔═╡ ba431ab4-c4c5-4cc9-b5c7-05d686d4bcf3
 let optf = OptimizationFunction(Cost, AutoForwardDiff())
-	u0 = ComponentArray(mu=15, sigma=1.0)
+	u0 = ComponentArray(mu=10., sigma=10.0)
 	prob = OptimizationProblem(optf, u0; lb=[0.0, 0.0], ub=[100., 100.]);
 	sol=solve(prob, OptimizationOptimJL.BFGS())
 	sol.u
@@ -2387,24 +2393,25 @@ version = "4.1.0+0"
 # ╠═ee2d5da0-6c1e-11f0-1edc-b7241894d2ae
 # ╟─63035f62-5682-4e70-ac2d-0e32f40e7a10
 # ╟─1b72aa4e-8a6f-4fd7-8d95-e2760e74e35f
-# ╠═0ee01159-4faa-48b0-b124-b6f96aa2f65c
+# ╟─0ee01159-4faa-48b0-b124-b6f96aa2f65c
 # ╟─e011b2f9-299c-4b71-b507-4a465b5cef31
+# ╠═5b390dac-e21c-4971-a54f-ed31c372f4a6
 # ╠═c4f570b0-ceb3-45ac-9021-18f959ea03f4
 # ╠═82d304a2-588c-4e79-8e3a-e03ac08bf1ad
 # ╟─edf878ca-3ab7-479c-a811-8c5775f7dee2
 # ╠═d24dca2c-4ee2-4b4b-936f-d31657703f7d
-# ╠═477b7274-54db-4893-8ae3-a838d7216c9b
+# ╟─477b7274-54db-4893-8ae3-a838d7216c9b
 # ╠═f4d6b14c-8c64-4c1c-b382-79a60fad2106
 # ╟─8bccb5ce-8f95-4d74-a1cd-e4e1ec7aae52
 # ╠═8ef83be8-65e2-435d-8569-4c126f22fb0a
 # ╟─e57db85b-b820-461d-90f3-4a77ceca42ad
 # ╠═31d86a91-a255-4222-bb5c-696b6277ad03
 # ╠═f299a7c3-4049-413a-a083-50fdcab4ebf3
-# ╟─9e1cbb6b-e613-4f51-9f71-fb637e1b3854
+# ╠═9e1cbb6b-e613-4f51-9f71-fb637e1b3854
 # ╟─64771e0a-d97b-4c7e-ab03-5a8b7225597d
 # ╠═9a580dc4-9040-4d85-93ad-0c79226d469f
 # ╠═faf96c13-5ec7-47b2-bcd6-962caf263d98
-# ╠═84ce35f8-1012-4241-83a0-acc86c270729
+# ╟─84ce35f8-1012-4241-83a0-acc86c270729
 # ╠═87f91c1b-bb90-4e76-b958-d54119633876
 # ╟─15b7ba6b-030d-4c15-97e0-59331fe16158
 # ╠═6ed8f0d3-b11e-420f-bf7f-a558b72dbac1
