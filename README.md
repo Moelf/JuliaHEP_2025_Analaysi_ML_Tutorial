@@ -31,3 +31,4 @@ where the `dot` means here.
 ## Compiled Pluto notebooks:
 - [Fitting in Julia](https://pluto.land/n/m6fuf72z)
 - [MLJ Demo](https://pluto.land/n/qbhxq78c)
+- [Auto diff and Lux.jl](https://pluto.land/n/44qy5q87)
